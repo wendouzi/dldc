@@ -24,8 +24,8 @@ import tensorflow as tf
 from openpyxl import load_workbook
 
 # read Data
-Data_dir = '/home/super/hhd/dldc/data/'
-
+# Data_dir = '/home/super/hhd/dldc/data/'
+Data_dir = '/home/yangxianping/workspace/DLDC/dldc/data/'
 Train_data_with_files = ('with_20150414', 'with_20151020', 'with_20150414_2', 'with_20151021')
 Train_data_without_file = ('without',)
 
@@ -62,7 +62,12 @@ for d in Train_data_with:
         mask = dd > 0
         if False not in mask:
             origin_x1.append(dd[:5])
-            density.append(numpy.array(dd[5]))
+            tmp = dd[5]
+            if tmp > 10:
+                tmp = 10
+            if tmp < 0:
+                tmp = 0
+            density.append(tmp)
 
 print('origin_x size:'+ str(len(origin_x1)))
 # Train_data_with = numpy.array(origin_x1)
@@ -132,18 +137,28 @@ print('Label type' + str(type(Label)) + '  data type ' + str(type(Label[1])))
 print('Label:shape'+str(len(Label)))
 print('Check_Label:shape'+str(len(Check_Label)))
 
-# Create the model
+# Create the model old model
 x = tf.placeholder(tf.float32, [None, 5])
 W = tf.Variable(tf.zeros([5, 2]))
 b = tf.Variable(tf.zeros([2]))
 y = tf.nn.softmax(tf.matmul(x, W) + b)
+
+
+# x = tf.placeholder(tf.float32, [None, 5])
+# W1 = tf.Variable(tf.zeros([5, 10]))
+# b1 = tf.Variable(tf.zeros([10]))
+# h1 = tf.nn.softmax(tf.matmul(x, W1) + b1)
+
+# W2 = tf.Variable(tf.zeros([10, 2]))
+# b2 = tf.Variable(tf.zeros([2]))
+# y = tf.matmul(h1, W2) + b2
 
 # Define loss and optimizer
 y_ = tf.placeholder(tf.float32, [None, 2])
 
 cross_entropy = tf.reduce_mean(
     tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
-train_step = tf.train.GradientDescentOptimizer(0.1).minimize(cross_entropy)
+train_step = tf.train.GradientDescentOptimizer(0.001).minimize(cross_entropy)
 
 sess = tf.InteractiveSession()
 tf.global_variables_initializer().run()
@@ -170,8 +185,12 @@ for _ in range(10):
     sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
     # sess.run(train_step, feed_dict={x: Train_data, y_: Label})
 
-print(W)
-print(b)
+print('W:', sess.run(W))
+print('b1:', sess.run(b))
+
+# print('W1:', sess.run(W1), 'W2:', sess.run(W2))
+# print('b1:', sess.run(b1), 'b2:', sess.run(b2))
+
 # Test trained model
 correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -185,6 +204,8 @@ print(sess.run(accuracy, feed_dict={x: Check_data,
     
 # density = [list(dd) for dd in density]
 
+density = [numpy.array([dd]) for dd in density]
+
 Density_check_num = 200
 Density_Train_x = origin_x1[Density_check_num:]
 Density_Train_y = density[Density_check_num:]
@@ -193,35 +214,51 @@ Density_Check_x = origin_x1[:Density_check_num]
 Density_Check_y = density[:Density_check_num]
 
 
-print('Density_Train_y:shape'+str(len(Density_Train_y)))
 print('Density_Train_x:shape'+str(len(Density_Train_x)))
+print('Density_Train_y:shape'+str(len(Density_Train_y)))
 print('Density_Train_x type' + str(type(Density_Train_x)) + '  data type ' + str(type(Density_Train_x[1])))
-print('Density_Check_y type' + str(type(Density_Train_y)) + '  data type ' + str(type(Density_Train_y[1])))
+print('Density_Train_y type' + str(type(Density_Train_y)) + '  data type ' + str(type(Density_Train_y[1])))
 
-# Create the model
+# Create the model old model
+# xx = tf.placeholder(tf.float32, [None, 5])
+# WW = tf.Variable(tf.zeros([5, 1]))
+# bb = tf.Variable(tf.zeros([1]))
+# yy = tf.nn.softmax(tf.matmul(xx, WW) + bb)
+
+#new model
 xx = tf.placeholder(tf.float32, [None, 5])
-WW = tf.Variable(tf.zeros([5, 1]))
-bb = tf.Variable(tf.zeros([1]))
-yy = tf.nn.softmax(tf.matmul(xx, WW) + bb)
+WW1 = tf.Variable(tf.zeros([5, 10]))
+bb1 = tf.Variable(tf.zeros([10]))
+hh1 = tf.nn.softmax(tf.matmul(xx, WW1) + bb1)
+WW2 = tf.Variable(tf.zeros([10, 1]))
+bb2 = tf.Variable(tf.zeros([1]))
+yy = tf.matmul(hh1, WW2) + bb2
 
 # Define loss and optimizer
-yy_ = tf.placeholder(tf.float32, [None])
+yy_ = tf.placeholder(tf.float32, [None, 1])
 
 cross_entropy2 = tf.reduce_mean(
     tf.nn.softmax_cross_entropy_with_logits(labels=yy_, logits=yy))
-train_step2 = tf.train.GradientDescentOptimizer(0.1).minimize(cross_entropy2)
+train_step2 = tf.train.GradientDescentOptimizer(0.001).minimize(cross_entropy2)
 
 sess2 = tf.InteractiveSession()
 tf.global_variables_initializer().run()
 
 # Train
 for _ in range(10):
-    sess.run(train_step2, feed_dict={xx: Density_Train_x, yy_: Density_Train_y})
-
-print(WW)
-print(bb)
+    # batch_x = []
+    # batch_y = []
+    # for dd in range(0, len(Density_Train_x)):
+    #     batch_x.append(numpy.array(Density_Train_x[dd]))
+    #     batch_y.append(numpy.array(Density_Train_y[dd]))
+    #     # sess2.run(train_step2, feed_dict={xx: [batch_x], yy_: [batch_y]})
+    # sess2.run(train_step2, feed_dict={xx: batch_x, yy_: batch_y})
+    sess2.run(train_step2, feed_dict={xx: Density_Train_x, yy_: Density_Train_y})
+print('WW1:', sess2.run(WW1), 'WW2', sess2.run(WW2))
+print('bb1:', sess2.run(bb1), 'bb2:', sess2.run(bb2))
 # Test trained model
 # correct_prediction2 = tf.div(tf.sub(yy, yy_), yy_)
 accuracy2 = tf.reduce_mean(tf.squared_difference(yy, yy_))
-print(sess.run(accuracy2, feed_dict={xx: Density_Check_x,
+# accuracy2 = tf.reduce_mean(tf.square(tf.subtract(yy, yy_)))
+print(sess2.run(accuracy2, feed_dict={xx: Density_Check_x,
                                     yy_: Density_Check_y}))
